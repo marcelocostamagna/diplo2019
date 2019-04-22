@@ -3,6 +3,8 @@ library("readr")
 library("knitr")
 library("data.table")
 library("openxlsx")
+library("moments")
+library("GGally")
 
 
 # Cargar dataset ----------------------------------------------------------
@@ -33,6 +35,7 @@ hfi <- hfi_cc_2018[, c(1:4, 53:61, 119:122)]
 #1 - Estadisticos descriptivos
 #1.1 - Rango de variables
 
+
 T0 <- hfi %>%
   group_by(countries) %>%
   summarise_all(mean, na.rm = T)
@@ -45,7 +48,16 @@ T2 <- hfi %>%
   group_by(region, year) %>%
   summarise_all(mean, na.rm = T)
 
-summary(hfi)
+
+#con dplyr
+
+hfi %>% 
+  select( starts_with("pf"),starts_with("hf")) %>% 
+  sapply(., range, na.rm = TRUE) %>% 
+  as.data.frame(rangos, row.names=c("min","max")) %>% 
+  t()
+
+
 
 #1.2 - Media, mediana, ds y moda de pf_identity y hf_score 
 #mundo y Latinoamérica 
@@ -319,9 +331,19 @@ g322 <- ggplot(data=hfi, aes(hfi$hf_score)) +
                 lwd = 0.7,
                 col = 'blue') +
   geom_density(col = "red") +
-  labs(title = "Histogram Indice de Identidad") +
-  labs(x="Indice de Identidad", y="Count") +
+  labs(title = "Histogram Indice de Libertad Humana") +
+  labs(x="Indice de Libertad", y="Count") +
   theme(plot.title = element_text(hjust = 0.5))
+
+##Todos los años
+
+ks.test(hfi$pf_identity, pnorm, 
+        mean(hfi$pf_identity, na.rm = T), 
+        sd(hfi$pf_identity, na.rm = T))
+
+ks.test(hfi$hf_score, pnorm, 
+        mean(hfi$hf_score, na.rm = T), 
+        sd(hfi$hf_score, na.rm = T))
 
 ##Año 2016
 
@@ -339,23 +361,67 @@ ks.test(aml$hf_score, pnorm,
         mean(aml$hf_score), 
         sd(aml$hf_score))
 
-##Todos los años
-
-ks.test(hfi$pf_identity, pnorm, 
-        mean(hfi$pf_identity, na.rm = T), 
-        sd(hfi$pf_identity, na.rm = T))
-
-ks.test(hfi$hf_score, pnorm, 
-        mean(hfi$hf_score, na.rm = T), 
-        sd(hfi$hf_score, na.rm = T))
-
-
 #3.3 - qqplot
 
-qqnorm(y2016$hf_score)
+qqnorm(y2016$hf_score) 
 qqline(y2016$hf_score)
+
 
 qqnorm(aml$hf_score)
 qqline(aml$hf_score)
 
+qqnorm(hfi$hf_score)
+qqline(hfi$hf_score)
+
+qqnorm(hfi$pf_identity)
+qqline(hfi$pf_identity)
+
+#3.4 - Asimetria y Curtosis - 
+
+skewness(hfi$pf_identity, na.rm = T) 
+kurtosis(hfi$pf_identity, na.rm = T)
+
+#pf_identity = asimétrica izquierda y 
+#levemente más achatada que la distribución normal
+
+skewness(hfi$hf_score, na.rm = T) 
+kurtosis(hfi$hf_score, na.rm = T)
+
+#hf_score = asimétrica izquierda y 
+#levemente más achatada que la distribución normal
+
+skewness(y2016$hf_score, na.rm = T) 
+kurtosis(y2016$hf_score, na.rm = T)
+
+#hf_score = asimétrica izquierda y 
+#levemente más achatada que la distribución normal
+
+g34 <- ggplot(data=y2016, aes(y2016$hf_score)) + 
+  geom_histogram(aes(y = stat(density)),
+                 bins = 15, 
+                 col="lightblue", 
+                 fill="lightblue") +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(y2016$hf_score, na.rm = T), 
+                            sd = sd(y2016$hf_score, na.rm = T)),
+                lwd = 0.7,
+                col = 'blue') +
+  geom_density(col = "red") +
+  labs(title = "Histogram Indice de Libertad Humana, año 2016") +
+  labs(x="Indice de Libertad", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+#4 - Correlaciones
+#4.1 - pf_identity, hf_score y ef_score
+
+g41 <- ggpairs(hfi[, c("pf_identity", "hf_score", "ef_score")]) + 
+  theme_classic()
+
+#4.3 - Correlacion de Pearson, spearman, coeficientes de tau y de kendall
+
+cor(hfi[, c("pf_identity", "hf_score", "ef_score")], 
+    use= "complete.obs", method="pearson")
+
+cor(hfi[, c("pf_identity", "hf_score", "ef_score")], 
+    use= "complete.obs", method="spearman")
 

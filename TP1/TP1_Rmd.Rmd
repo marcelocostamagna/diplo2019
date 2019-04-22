@@ -12,11 +12,38 @@ library("readr")
 library("knitr")
 library("data.table")
 library("openxlsx")
+library("moments")
+library("GGally")
 ```
 
 ```{r message=FALSE, warning=FALSE}
 hfi_cc_2018 <- read_csv("../Data/hfi_cc_2018.csv")
 ```
+
+## Introducción
+El Índice de Libertad Humana mide las libertades económicas y personales en 162 países. Tiene en cuenta la
+libertad para comerciar o usar dinero, y el grado en que las personas son libres de disfrutar de la libertad de
+expresión, religión, asociación y asamblea.
+El índice se volvió robusto en el año 2008 y en el año 2016 alcanzó a 162 países. Se mide en una escala de 0 a 10,
+donde 10 representa mayor libertad.  Está integrado por las siguientes categorías:
+Libertad Personal:
+Estado de derecho
+Seguridad y protección
+Movimiento
+Religión
+Asociación, asamblea y sociedad civil.
+Expresión e información
+Identidad y relaciones
+Libertad Económica
+Tamaño del gobierno
+Sistema legal y derechos de propiedad
+Acceso al dinero
+Libertad de comercio internacional
+Regulación de Crédito, Trabajo y Negocios.
+ 
+Cada una de las categorías se encuentra integrada por subcategorías que se promedian para obtener el valor de la
+categoría; a su vez las categorías se promedian para obtener el valor del índice de libertad económica y el índice
+de libertad personal. El promedio de estos últimos forma el índice de libertad humana.
 
 
 ## 1. Estadísticos Descriptivos
@@ -24,30 +51,593 @@ hfi_cc_2018 <- read_csv("../Data/hfi_cc_2018.csv")
 
 ### 1.Para comenzar con un pantallazo de los datos, calcular el rango de las variables
 
+Las variables de identificación de la base son: year, ISO_code, countries y región. El índice abarca valores entre
+los años 2008 y 2016, contiene información para 162 países únicos pertenecientes a 10 regiones.
+ 
+Las variables que hacen referencia a la Identidad (pf_identity_xxx), están definidas del 0 al 10, en todos los
+casos su mínimo es 0 y máximo 10. La variable pf_identity, construída como el promedio de todas las anteriores,
+también presenta valores del 0 al 10.
+ 
+La variable ef_score (Índice de libertad económica), que representa el valor promedio de todas las variables
+referidas a la libertad económica (no analizadas en el dataset reducido), presenta un valor mínimo de 2,88 y un
+máximo de 9,190. Por su parte, hf_score (Indice de libertad humana) representa el promedio entre ef_score y
+pf_score (no considerada en el dataset reducido), asume valores de 3,766 a 9,126.
+ 
+Las variables ef_rank y hf_rank son el ranking del índice de libertad económica y libertad humana para cada país
+por cada año bajo estudio.
+ 
+Salvo las variables de identificación todas las restantes presentan valores faltantes; la variable con mayor
+número de faltantes es pf_identity_legal. Las variables de ef_score y hf_score presentan 80 valores faltantes cada
+una.
+
 ```{r cars, message=FALSE, warning=FALSE, include=FALSE}
 hfi <- hfi_cc_2018[, c(1:4, 53:61, 119:122)]
 
-T0 <- hfi %>%
+```
+
+OPCION 1 !!! Sacada del doc
+```{r message=FALSE, warning=FALSE}
+ hfi %>%
   group_by(countries) %>%
   summarise_all(mean, na.rm = T)
-T1 <- hfi %>%
+ hfi %>%
   group_by(countries) %>%
   summarise(q = n())
-T2 <- hfi %>%
+ hfi %>%
   group_by(region, year) %>%
   summarise_all(mean, na.rm = T)
 ```
 
+
+Opcion 2 !!! Ver summary de las variables
+```{r}
+hfi %>% 
+  select( starts_with("pf"),starts_with("hf")) %>%
+  summary()
+```
+
+OPCION 3 !!!! Ver solo rangos de valores para cada variable
+```{r}
+hfi %>% 
+  select( starts_with("pf"),starts_with("hf")) %>% 
+  sapply(., range, na.rm = TRUE) %>% 
+  as.data.frame(rangos, row.names=c("min","max")) %>% 
+  t()
+
+
+```
+
+### 2.Obtener media, mediana y desviación estándar de las variables pf_identity y hf_score en el mundo 
+y compararla con la de Latinoamérica y el caribe. ¿Tiene sentido calcular la moda?
+
+A continuación se presenta la mediana, la media y la desviación estándar para las variables pf_identity  y
+hf_score  para América Latina y el Caribe y el Resto de las regiones consideradas en el cálculo del Índice. Los
+resultados indican el valor promedio por región durante todo el periodo comprendido entre el año 2008 y 2016.
+Posteriormente se realiza una apertura por región.
+
+```{r}
+hfi$alca <- ifelse(hfi$region == "Latin America & the Caribbean",
+                   "Am. Latina y el Caribe", "Resto del mundo")
+hfi %>%
+  group_by(alca) %>%
+  summarise(mediana_pf = round(median(pf_identity, na.rm = T), 2),
+            media_pf = round(mean(pf_identity, na.rm = T), 2),
+            desv_pf = round(sd(pf_identity, na.rm = T),2),
+            mediana_hf = round(median(hf_score, na.rm = T),2),
+            media_hf = round(mean(hf_score, na.rm = T),2),
+            desv_hf = round(sd(hf_score, na.rm = T),2))
+```
+
+
+América Latina y el Caribe se encuentra en promedio, por encima del total del mundo, tanto si se considera la
+media del índice de identidad como la media del índice de libertad humana. En ambos casos también la mediana es
+mayor y la desviación estándar menor.
+
+
+```{r}
+ggplot(hfi, aes(alca, pf_identity, fill= alca)) +
+  geom_boxplot(show.legend = F) +
+  xlab("América Latina y El Caribe y Resto del Mundo") + 
+  ylab("Indice de Identidad (pf_identity)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+
+ggplot(hfi, aes(alca, hf_score, fill= alca)) +
+  geom_boxplot(show.legend = F) +
+  xlab("América Latina y El Caribe y Resto del Mundo") + 
+  ylab("Indice de Libertad Humana (hf_score)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+
+```
+
+Si se tiene en cuenta la desagregación por región, se observa que la región con mayor índice promedio de libertad
+en identidad (pf_identity) es Europa del Oeste, seguida por Asia del Este, Norte América y Europa del Este; en
+sexto lugar se encuentra América Latina y el Caribe y en el último lugar Medio Oriente y África del Norte.
+
+```{r}
+hfi %>%
+  group_by(region) %>%
+  summarise(mediana_pf = round(median(pf_identity, na.rm = T), 2),
+            media_pf = round(mean(pf_identity, na.rm = T), 2),
+            desv_pf = round(sd(pf_identity, na.rm = T),2),
+            mediana_hf = round(median(hf_score, na.rm = T),2),
+            media_hf = round(mean(hf_score, na.rm = T),2),
+            desv_hf = round(sd(hf_score, na.rm = T),2))
+```
+
+La región con mayor índice promedio de libertad en identidad (pf_identity) es Europa del Oeste, seguida por Asia
+del Este, Norte América y Europa del Este; en sexto lugar se encuentra América Latina y el Caribe y en el último
+lugar Medio Oriente y África del Norte.
+ 
+Si se considera el índice de libertad humana, el mayor valor promedio se presenta en América del Norte, seguido
+por Europa Oriental y Oceanía.  América Latina y el Caribe se encuentran en la sexta posición.
+
+
+```{r}
+ggplot(hfi, aes(region, pf_identity, fill= region)) +
+  geom_boxplot(show.legend = F) +
+  xlab("Region") + 
+  ylab("Indice de Identidad (pf_identity)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+```
+
+
+```{r}
+ggplot(hfi, aes(region, hf_score, fill= region)) +
+  geom_boxplot(show.legend = F) +
+  xlab("Region") + 
+  ylab("Indice de Libertad Humana (hf_score)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+```
+
+Por otra parte tanto América del Norte como Europa Oriental presentan la menor dispersión entre los valores
+asumidos por los diferentes países en los distintos años. En Oceanía, si bien el valor promedio es alto, el 50% de
+los datos se encuentra comprendido entre 7 y 8,7. América Latina y El Caribe presenta valores outliers muy por
+debajo de la media.
+
+### 3.¿Son todos los valores de pf_identity y hf_score directamente comparables? ¿Qué otra variable podría
+influenciarlos?
+ 
+Los valores no son directamente comparables ya que están influenciados por el año de estudio, la región y el país.
+Ambas variables tienen 80 valores faltantes. Adicionalmente el Índice de Identidad es utilizado para calcular el
+índice de Libertad Humana.
+
+
+### 4.¿Cómo pueden sanearse los valores faltantes?
+En este conjunto de datos, los valores faltantes representan tanto años en los que los países no brindaron
+información para el cálculo del índice, como valores puntuales en años en los que si bien completaron algunos
+valores dejaron otros sin respuesta. Con respecto a los primeros, es decir años donde el país no formó parte del
+Índice es posible eliminar las filas. Por ejemplo Belarus, cuenta con 9 filas en la base y sólo la correspondiente
+al año 2016 tiene datos.
+En los casos en que el valor faltante corresponde a una de las categorías del índice, consideramos que la no
+respuesta tiene un significado particular para ese país y por lo tanto no se recomienda completarlo
+
+
+### 5.¿Encuentra outliers en estas dos variables? ¿Qué método utiliza para detectarlos? ¿Los outliers, son
+globales o por grupo? ¿Los eliminaría del conjunto de datos?
+Si se considera la variable pf_identity para todo el mundo y todos los años, no se observan valores outlires
+definidos como (Q1 - 1,5IQR), (Q3 + 1,5IQR). 
+
+```{r}
+ggplot(hfi, aes("pf_identity", pf_identity)) +
+  geom_boxplot(show.legend = F) +
+  xlab("Todo el Mundo") + 
+  ylab("Indice de Identidad (pf_identity)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+
+Si se la considera de acuerdo al año de medición, tampoco se observan valores outliers.
+
+
+```{r}
+hfi$year <- as.factor(hfi$year)
+ggplot(hfi, aes(year, pf_identity, fill = year)) +
+  geom_boxplot(aes(group = year), show.legend = F) +
+  xlab("Año") + 
+  ylab("Indice de Identidad (pf_identity)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+
+```{r}
+ggplot(hfi, aes("hf_score", hf_score)) +
+  geom_boxplot(show.legend = F) +
+  xlab("Todo el Mundo") + 
+  ylab("Indice de Libertad Humana (hf_score)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+```{r}
+ggplot(hfi, aes(year, hf_score, fill = year)) +
+  geom_boxplot(aes(group = year), show.legend = F) +
+  xlab("Año") + 
+  ylab("Indice de Libertad Humana (hf_score)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+La variable hf_score presenta valores outliers de manera global, es decir para todos los 
+países durante todos los años, y para los años 2013 y 2016, correspondiendo en ambos casos a Syria. 
+En ningún caso consideramos eliminarlos del conjunto de datos, ya que son valores válidos dentro del 
+conjunto de datos.
+
+
+## 2. Agregación de Datos 
+
+### 1. Grafiquen la media de la variable pf_identity y hf_score a través de los años.
+
+```{r}
+media <- aggregate(pf_identity ~ year, hfi, mean)
+media$pf_identity <- round(media$pf_identity, 3)
+media_hf <- aggregate(hf_score ~ year, hfi, mean)
+media_hf$hf_score <- round(media_hf$hf_score, 3)
+
+ggplot(hfi, aes(year, pf_identity, fill = year)) +
+  geom_boxplot(show.legend = F) +
+  stat_summary(fun.y=mean, colour="black", geom="point", 
+               shape=18, size=1, show.legend = F) +
+  geom_text(data = media, aes(label = pf_identity, y = pf_identity - 0.75)) +
+  xlab("Año") + 
+  ylab("Indice de Identidad (pf_identity)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+```{r}
+ggplot(hfi, aes(year, hf_score, fill = year)) +
+  geom_boxplot(show.legend = F) +
+  stat_summary(fun.y=mean, colour="black", geom="point", 
+               shape=18, size=1, show.legend = F) +
+  geom_text(data = media_hf, aes(label = hf_score, y = hf_score + 0.3)) +
+  xlab("Año") + 
+  ylab("Indice de Libertad Humana (hf_score)") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+```{r}
+medias <- merge(media, media_hf, by = "year")
+#medias$year <- as.Date(medias$year, format= "%Y")
+medias$year <- as.numeric(as.character(medias$year))
+
+medias %>%
+  gather(key, value, pf_identity, hf_score) %>%
+  ggplot(aes(year, value, colour = key)) +
+  geom_line(size = 1) +
+  scale_x_continuous(breaks = unique(medias$year)) +
+  xlab("Año") + 
+  ylab("Indice promedio") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+
+### 2.Realicen los mismos gráficos, pero separando por regiones ¿La tendencia observada, 
+
+```{r}
+b221 <- hfi %>%
+  group_by(year, region) %>%
+  summarise(pf_identity = mean(pf_identity, na.rm = T))
+
+b221 <-  b221 %>%
+  gather(key, value, pf_identity)
+b221$year <- as.numeric(as.character(b221$year))
+
+ggplot(b221, aes(year, value, colour = region)) +
+  geom_line(size = 1) +
+  scale_x_continuous(breaks = unique(b221$year)) +
+  xlab("Año") + 
+  ylab("Indice de Identidad Promedio") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+
+Si se consideran los valores medios del Índice de Libertad de Identidad por región se observa que la tendencia es
+en general decreciente al igual que para el índice global. Se observa una primer caída en el año 2010 marcada
+principalmente por los valores observados en Middle East & North Africa, luego una leve recuperación y tendencia
+decreciente hasta el año 2016.
+
+```{r}
+b222 <- hfi %>%
+  group_by(year, region) %>%
+  summarise(hf_score = mean(hf_score, na.rm = T))
+
+b222 <-  b222 %>%
+  gather(key, value, hf_score)
+b222$year <- as.numeric(as.character(b222$year))
+
+ggplot(b222, aes(year, value, colour = region)) +
+  geom_line(size = 1) +
+  scale_x_continuous(breaks = unique(b222$year)) +
+  xlab("Año") + 
+  ylab("Indice de Libertad Humana Promedio") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5,
+                                   vjust = 0.5))
+```
+
+
+El índice promedio de libertad humana global presenta una tendencia decreciente más suave que el índice de
+libertad en identidad. Esta situación también se ve reflejada en la distribución por regiones, donde todas las
+regiones presentan tendencia decreciente en los últimos años a excepción de East Asia que presenta un leve
+crecimiento a partir del año 2010 y Oceanía que a partir del año 2013 presenta una leve tendencia creciente.
+
+
+### 3.Si lo consideran necesario, grafiquen algunos países de Latinoamerica para tratar
+
+
+## 3. Distribuciones
+
+### 1.Graficar en un mismo histograma la distribución de la variable pf_identity en global, y en Latinoamérica
+y el caribe. Repetir para la variable hf_score. ¿Visualmente, a qué tipo de distribución corresponde cada
+variable?
+¿Es correcto utilizar todos los registros para esas zonas en estos gráficos?
+
+
+Índice de Libertad en Identidad para América Latina y el Caribe y el Resto del Mundo, año 2016
+
+```{r}
+y2016 <- hfi[hfi$year == 2016, c("alca", "pf_identity", "hf_score")]
+
+# Overlaid histograms
+ggplot(y2016, aes(x=pf_identity, fill=alca)) +
+  geom_histogram(aes(y=..density..),
+                 binwidth=.5, 
+                 alpha=.5, 
+                 position="identity") + 
+  geom_density(alpha=.3) +
+  xlab("Indice de Libertad en Identidad") +
+  theme_classic() 
+
+
+```
+
+```{r}
+ggplot(y2016, aes(x=hf_score, fill=alca)) +
+  geom_histogram(aes(y=..density..),
+                 binwidth=.5, 
+                 alpha=.5, 
+                 position="identity") + 
+  geom_density(alpha=.3) +
+  xlab("Indice de Libertad Humana") +
+  theme_classic() 
+```
+
+Se considera apropiado verificar las distribuciones para cada año en particular, para los gráficos se consideró el
+año 2016. En ningún caso parece ajustarse a una distribución normal.
+
+### 2. Realizar una prueba de Kolmogorov-Smirnof para comprobar analíticamente si estas variables responden 
+la distribución propuesta en el ejercicio anterior.
+
+
+Test de Kolmogorov Smirnof:
+H0: los datos proceden de una distribución normal
+H1: los datos no proceden de una distribución normal
+
 ```{r}
 
+ks.test(hfi$pf_identity, pnorm, 
+        mean(hfi$pf_identity, na.rm = T), 
+        sd(hfi$pf_identity, na.rm = T))
+
+```
+Variable: pf_identity -> D = 0.23674, p-value = 2.2e-16
+No es posible afirmar que la variable pf_identity proviene de una distribución normal.
+
+
+```{r}
+
+ks.test(hfi$hf_score, pnorm, 
+        mean(hfi$hf_score, na.rm = T), 
+        sd(hfi$hf_score, na.rm = T))
+```
+Variable: hf_score -> D = 0.065978, p-value = 1.232e-05
+No es posible afirmar que la variable hf_score proviene de una distribución normal.
+
+Resta probar la distribución de pf_identity y hf_score para el año 2016 y para América Latina y el Caribe. 
+
+
+```{r}
+ks.test(y2016$pf_identity, pnorm, 
+        mean(y2016$pf_identity), 
+        sd(y2016$pf_identity))
+
 ```
 
-## Including Plots
+Variable: pf_identity -> D = 0.20529, p-value = 2.35e-06
+No es posible afirmar que la variable pf_identity proviene de una distribución normal.
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+ks.test(y2016$hf_score, pnorm, 
+        mean(y2016$hf_score), 
+        sd(y2016$hf_score))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Variable: hf_score -> D = 0.060565, p-value = 0.5922
+Dado que el p-value es mayor a 0.05 es posible rechazar la hipótesis alternativa, concluyendo que hf_score 
+se distribuye de manera normal.
+
+```{r}
+
+aml <- y2016[y2016$alca == "Am. Latina y el Caribe", ]
+
+ks.test(aml$hf_score, pnorm, 
+        mean(aml$hf_score), 
+        sd(aml$hf_score))
+```
+Variable: hf_score (Am. Latina y el Caribe) -> D = 0.23111, p-value = 0.1054
+Dado que el p-value es mayor a 0.05 es posible rechazar la hipótesis alternativa, concluyendo que hf_score
+para América Latina y El Caribe se distribuye de manera normal
+
+### 3.Realizar un gráfico QQ de las mismas distribuciones. Se puede utilizar a,bas distribuciones sobre todos los
+datos o sólo sobre Latinoamérica, pero no cruzadas. 
+
+
+QQ Plot - Indice de Libertad Humana Global, año 2016
+
+```{r}
+qqnorm(y2016$hf_score) 
+qqline(y2016$hf_score)
+
+```
+
+QQ Plot - Indice de Libertad Humana América Latina y El Caribe, año 2016
+
+```{r}
+qqnorm(aml$hf_score)
+qqline(aml$hf_score)
+
+```
+
+
+```{r}
+qqnorm(hfi$hf_score)
+qqline(hfi$hf_score)
+
+```
+
+
+```{r}
+qqnorm(hfi$pf_identity)
+qqline(hfi$pf_identity)
+```
+
+### 4. Medir la asimetría (skew) y curtosis de las mismas distribuciones con las que realizó el gráfico anterior.
+¿Cómo se relacionan estos estadísticos con la forma del gráfico QQ obtenido previamente? ¿El gráfico QQ provee más
+información que no esté presente en estos estadísticos?
+
+
+Si se considera la variable pf_identity para todo el conjunto de datos, la misma presenta asimetría izquierda y 
+se encuentra levemente más achatada que la distribución Normal. El coeficiente de asimetría es de -0.9121781 y
+el de kurtosis de 2.585168
+
+
+```{r}
+ggplot(data=hfi, aes(hfi$pf_identity)) + 
+  geom_histogram(aes(y = stat(density)),
+                 bins = 15, 
+                 col="lightblue", 
+                 fill="lightblue") +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(hfi$pf_identity, na.rm = T), 
+                            sd = sd(hfi$pf_identity, na.rm = T)),
+                lwd = 0.7,
+                col = 'blue') +
+  geom_density(col = "red") +
+  labs(title = "Histogram Indice de Identidad") +
+  labs(x="Indice de Identidad", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+La variable hf_score, pareciera tener información de dos distribuciones; en forma conjunta presenta asimetría
+izquierda y es levemente más achatada que una distribución normal. (-0.2120519 y 2.48981)
+
+```{r}
+ggplot(data=hfi, aes(hfi$hf_score)) + 
+  geom_histogram(aes(y = stat(density)),
+                 bins = 15, 
+                 col="lightblue", 
+                 fill="lightblue") +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(hfi$hf_score, na.rm = T), 
+                            sd = sd(hfi$hf_score, na.rm = T)),
+                lwd = 0.7,
+                col = 'blue') +
+  geom_density(col = "red") +
+  labs(title = "Histogram Indice de Libertad Humana") +
+  labs(x="Indice de Libertad", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+Si se considera para esta última variable el año 2016, los coeficientes de asimetría y curtosis son los
+siguientes: -0.2933357 y 2.78069, también con simetría izquierda y levemente más chata que la distribución normal.
+Sin embargo el test de Kolmogorov Smirnov permitía rechazar la hipótesis alternativa. En el gráfico se observa un
+segundo pico entre el puntaje 8 y 9.
+
+```{r}
+ggplot(data=y2016, aes(y2016$hf_score)) + 
+  geom_histogram(aes(y = stat(density)),
+                 bins = 15, 
+                 col="lightblue", 
+                 fill="lightblue") +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(y2016$hf_score, na.rm = T), 
+                            sd = sd(y2016$hf_score, na.rm = T)),
+                lwd = 0.7,
+                col = 'blue') +
+  geom_density(col = "red") +
+  labs(title = "Histogram Indice de Libertad Humana, año 2016") +
+  labs(x="Indice de Libertad", y="Count") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## 4. Correlaciones
+
+### 1. ¿Qué conclusiones puede sacar de un gráfico pairplot de estas tres variables? ¿Es adecuado para los
+valores
+de pf_identity? ¿Por qué?
+
+La variable libertad en identidad (pf_identity) contribuye junto con otras categorías a formar el índice de
+libertad personal (pf_score) que promediado con el índice de libertad económica, (ef_score) da como resultado el
+índice de libertad humana (hf_score), motivo por el cual es de esperar que ambas variables se encuentren
+correlacionadas con el valor de este último.
+En el gráfico es posible observar que las variables ef_score y hf_score se encuentran fuertemente correlacionadas
+de forma positiva (0.855), pf_identity y hf_score también se encuentran correlacionadas de manera positiva (0.678)
+y prácticamente no existe correlación entre pf_identity y ef_score.
+
+```{r}
+ggpairs(hfi[, c("pf_identity", "hf_score", "ef_score")]) + 
+  theme_classic()
+```
+
+### 2. Graficar la correlación entre pf_identity y hf_score; y entre pf_identity y ef_score. Analizar el
+resultado, ¿se pueden sacar conclusiones? Tengan en cuenta que como pf_identity es el resultado de un 
+promedio,sólo toma algunos valores. Es, en efecto, discreta.
+
+No es posible obtener conclusiones ya que en ambos casos se observa para cada valor de pf_identity existen
+una gran amplitud de valores de df_score y hf_score.
+Si bien la gráfica de pf_identity se parece a una distribución discreta, no lo es ya que es el 
+resultado del promedio de 8 variables numéricas cuyos rangos van del 0 al 10.
+
+
+### 3. Calcular algún coeficiente de correlación adecuado entre los dos pares de variables, dependiendo de la
+cantidad de datos, el tipo de datos y la distribución de los mismo. Algunas opciones son: coeficiente de 
+pearson, coeficiente de spearman, coeficientes de tau y de kendall. Interpretar los resultados y justificar 
+si las variables están correlacionadas o no.
+
+```{r}
+cor(hfi[, c("pf_identity", "hf_score", "ef_score")], 
+    use= "complete.obs", method="pearson")
+
+
+```
+```{r}
+cor(hfi[, c("pf_identity", "hf_score", "ef_score")], 
+    use= "complete.obs", method="spearman")
+```
+
+
+
+
+
