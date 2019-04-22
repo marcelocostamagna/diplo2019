@@ -7,16 +7,39 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+library("readr")
+library("knitr")
+library("data.table")
+library("openxlsx")
 ```
 
-## R Markdown
+```{r message=FALSE, warning=FALSE}
+hfi_cc_2018 <- read_csv("../Data/hfi_cc_2018.csv")
+```
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## 1. Estadísticos Descriptivos
 
-```{r cars}
-summary(cars)
+
+### 1.Para comenzar con un pantallazo de los datos, calcular el rango de las variables
+
+```{r cars, message=FALSE, warning=FALSE, include=FALSE}
+hfi <- hfi_cc_2018[, c(1:4, 53:61, 119:122)]
+
+T0 <- hfi %>%
+  group_by(countries) %>%
+  summarise_all(mean, na.rm = T)
+T1 <- hfi %>%
+  group_by(countries) %>%
+  summarise(q = n())
+T2 <- hfi %>%
+  group_by(region, year) %>%
+  summarise_all(mean, na.rm = T)
+```
+
+```{r}
+
 ```
 
 ## Including Plots
