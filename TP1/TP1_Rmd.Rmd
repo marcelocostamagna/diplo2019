@@ -16,9 +16,13 @@ library("moments")
 library("GGally")
 ```
 
+
+
 ```{r message=FALSE, warning=FALSE}
 hfi_cc_2018 <- read_csv("../Data/hfi_cc_2018.csv")
 ```
+
+
 
 ## Introducción
 El Índice de Libertad Humana mide las libertades económicas y personales en 162 países. Tiene en cuenta la
@@ -51,7 +55,8 @@ de libertad personal. El promedio de estos últimos forma el índice de libertad
 
 ### 1.Para comenzar con un pantallazo de los datos, calcular el rango de las variables
 
-Las variables de identificación de la base son: year, ISO_code, countries y región. El índice abarca valores entre
+as variables de identificación de la base son: year, ISO_code, countries y región. El índice
+abarca valores entre
 los años 2008 y 2016, contiene información para 162 países únicos pertenecientes a 10 regiones.
  
 Las variables que hacen referencia a la Identidad (pf_identity_xxx), están definidas del 0 al 10, en todos los
@@ -75,31 +80,11 @@ hfi <- hfi_cc_2018[, c(1:4, 53:61, 119:122)]
 
 ```
 
-OPCION 1 !!! Sacada del doc
-```{r message=FALSE, warning=FALSE}
- hfi %>%
-  group_by(countries) %>%
-  summarise_all(mean, na.rm = T)
- hfi %>%
-  group_by(countries) %>%
-  summarise(q = n())
- hfi %>%
-  group_by(region, year) %>%
-  summarise_all(mean, na.rm = T)
-```
 
 
-Opcion 2 !!! Ver summary de las variables
 ```{r}
 hfi %>% 
-  select( starts_with("pf"),starts_with("hf")) %>%
-  summary()
-```
-
-OPCION 3 !!!! Ver solo rangos de valores para cada variable
-```{r}
-hfi %>% 
-  select( starts_with("pf"),starts_with("hf")) %>% 
+  select( starts_with("pf"),starts_with("hf"), ef_score) %>% 
   sapply(., range, na.rm = TRUE) %>% 
   as.data.frame(rangos, row.names=c("min","max")) %>% 
   t()
@@ -115,7 +100,7 @@ hf_score  para América Latina y el Caribe y el Resto de las regiones considerad
 resultados indican el valor promedio por región durante todo el periodo comprendido entre el año 2008 y 2016.
 Posteriormente se realiza una apertura por región.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 hfi$alca <- ifelse(hfi$region == "Latin America & the Caribbean",
                    "Am. Latina y el Caribe", "Resto del mundo")
 hfi %>%
