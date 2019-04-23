@@ -49,7 +49,7 @@ T2 <- hfi %>%
   summarise_all(mean, na.rm = T)
 
 
-#con dplyr
+#con dplyr prueba
 
 hfi %>% 
   select( starts_with("pf"),starts_with("hf")) %>% 
