@@ -14,7 +14,8 @@ hfi_cc_2018 <- read_csv("Data/hfi_cc_2018.csv")
 hfi_cc_2018 <- read.csv("C:/Users/User02/Google Drive/DiploDatos/the-human-freedom-index/hfi_cc_2018.csv")
 
 # Análisis Exploratorio ---------------------------------------------------
-
+###PRUEBA
+#aangelina
 
 table(hfi_cc_2018$year, useNA = "always")
 table(hfi_cc_2018$countries, useNA = "always")
