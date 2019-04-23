@@ -84,7 +84,7 @@ hfi <- hfi_cc_2018[, c(1:4, 53:61, 119:122)]
 
 ```{r}
 hfi %>% 
-  select( starts_with("pf"),starts_with("hf"), ef_score) %>% 
+  select( starts_with("pf"),starts_with("hf"), ef_score ) %>% 
   sapply(., range, na.rm = TRUE) %>% 
   as.data.frame(rangos, row.names=c("min","max")) %>% 
   t()
