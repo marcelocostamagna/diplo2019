@@ -208,3 +208,28 @@ Gráfico N°3 <br>
 grid.arrange(c2_1, c2_2, c2_3, ncol=2, nrow =2)
 ```
 
+Tenindo en cuenta los dos modelos anteriores, se opta por el segundo, dado que presenta un menor valor de la suma de cuadrados dentro de los grupos (withinss) y al tener menos variables se facilita su inerpretación. 
+
+Se observa que los grupos (cúmulos) identificados en el modelo están asociados al volumen de ventas y a la variable definida como tamaño. El grupo 1 representa las tiendas de menor tamaño y menores ventas, el grupo 3 es el grupo intermedio y el grupo 2 el de mayores ventas y tamaño. No se observa relación directa con la variable tipo de tienda (Type).
+
+Por último se presenta el modelo no normalizado a los fines de observar la influencia de la normalizacion de los datos en los resultados del clustering.
+
+```{r include=FALSE}
+
+set.seed(20)
+Cluster_3 <- kmeans(stores[, c(9:11)], 3, nstart = 20)
+```
+
+```{r}
+Cluster_3
+```
+
+Si bien los resultados indican que los clusters del modelo no normalizado explican un porcentje mayor de la variabilidad en los datos que el modelo anterior (88.7% y 82.8% respectivamente), la suma de cuadrados dentro de los grupos (withinss) es mucho considerablemente menor en el modelo 2 (modelo estandarizado con tres variables).
+
+```{r}
+Cluster_1$tot.withinss
+Cluster_2$tot.withinss
+Cluster_3$tot.withinss
+```
+
+
